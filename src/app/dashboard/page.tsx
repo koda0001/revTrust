@@ -39,52 +39,35 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-900 text-white">
-      {/* Pasek boczny (Sidebar) */}
-      <aside className="w-64 border-r border-slate-800 p-6 flex flex-col justify-between">
-        <div>
-          <h2 className="text-xl font-bold tracking-wide text-indigo-400 mb-8">
-            Dashboard
-          </h2>
-          <nav className="space-y-2">
-            <a
-              href="/dashboard"
-              className="block px-4 py-2 rounded-lg bg-slate-800 text-sm font-medium text-white"
-            >
-              Strona Główna
-            </a>
-          </nav>
-        </div>
+    <div className="space-y-8">
+      <header className="mb-4">
+        <h1 className="text-3xl font-bold">Witaj w panelu!</h1>
+        <p className="mt-2 text-slate-400 max-w-2xl">
+          Użyj menu po lewej stronie, aby przejść do strony głównej lub do źródeł danych.
+        </p>
+      </header>
 
-        {/* Dolna sekcja usera i wylogowania */}
-        <div className="border-t border-slate-800 pt-4">
-          <p className="text-xs text-slate-400 truncate mb-3">
-            Zalogowany: <br />
-            <span className="text-white font-medium">{user?.email}</span>
-          </p>
+      <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-8 shadow-xl shadow-slate-950/20 max-w-3xl">
+        <p className="text-slate-300">
+          Panel główny jest gotowy do rozbudowy. Możesz teraz dodać stronę źródeł,
+          która korzysta z tego samego lewego menu.
+        </p>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <button
+            onClick={() => router.push("/dashboard/sources")}
+            className="rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-500 transition"
+          >
+            Przejdź do źródeł
+          </button>
           <button
             onClick={handleLogout}
-            className="w-full bg-red-600/20 text-red-400 border border-red-500/30 py-2 rounded-lg font-semibold text-sm hover:bg-red-600/30 transition-colors"
+            className="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-700 transition"
           >
             Wyloguj się
           </button>
         </div>
-      </aside>
-
-      {/* Główna przestrzeń robocza */}
-      <main className="flex-1 p-8">
-        <header className="mb-8 flex justify-between items-center border-b border-slate-800 pb-4">
-          <h1 className="text-2xl font-bold">Witaj w panelu!</h1>
-        </header>
-
-        {/* Pusty layout na przyszłe moduły */}
-        <div className="rounded-xl border border-dashed border-slate-800 p-12 text-center text-slate-500">
-          <p className="text-base font-medium">Miejsce na Twoje komponenty</p>
-          <p className="text-xs mt-1">
-            Ten layout jest gotowy do rozbudowy.
-          </p>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }
