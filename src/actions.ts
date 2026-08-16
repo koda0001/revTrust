@@ -74,6 +74,50 @@ export async function createReview({ author, source, content, rating, accessToke
   return review;
 }
 
+export async function getGoogleReviews() {
+  const PLACE_ID = "ChIJS7iQaOY1GUcRY-uQEBR3hkA";
+  const API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+
+  if (!API_KEY) {
+    console.error("Brak klucza GOOGLE_PLACES_API_KEY w .env.local");
+    return [];
+  }
+
+  try {
+    // Zapytanie do oficjalnego API Google Places
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${PLACE_ID}&fields=reviews,rating,user_ratings_total&language=pl&key=${API_KEY}`;
+
+    const res = await fetch(url, {
+      // Opcjonalnie: Kesżowanie w Next.js np. na 1 godzinę (3600 sek), żeby nie marnować limitów API
+      next: { revalidate: 3600 } 
+    });
+
+    const data = await res.json();
+
+    if (data.status !== "OK" || !data.result?.reviews) {
+      console.error("Błąd API Google:", data.status, data.error_message);
+      return [];
+    }
+
+    // Mapujemy opinie na przejrzysty format dla aplikacji
+    const formattedReviews = data.result.reviews.map((rev: any) => ({
+      author: rev.author_name,
+      rating: rev.rating,
+      content: rev.text,
+      source: "Google",
+      authorPhoto: rev.profile_photo_url,
+      relativeTime: rev.relative_time_description,
+    }));
+
+    return formattedReviews;
+  } catch (error) {
+    console.error("Błąd podczas pobierania opinii z Google:", error);
+    return [];
+  }
+}
+
+
+
 export default {
   createReview,
   getReviews,

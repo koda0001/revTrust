@@ -22,17 +22,18 @@ model User {
 }
 
 model Review {
-  id         String   @id @default(uuid())
-  userId     String   @map("user_id")
-  author     String   // Kto wystawił (np. "Jan Kowalski")
-  source     String   // Źródło (np. "Google", "Trustpilot", "Formularz")
-  content    String   @db.Text // Treść opinii
-  rating     Int      // Ilość gwiazdek (np. 1-5)
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid())
+  externalId  String?  @unique @map("external_id") // Unikalny hash z Google Maps
+  userId      String   @map("user_id")
+  author      String   // Kto wystawił (np. "Jan Kowalski")
+  source      String   // Źródło (np. "Google", "Trustpilot")
+  content     String   @db.Text // Treść opinii
+  rating      Int      // Ilość gwiazdek (np. 1-5)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relacja z użytkownikiem Supabase
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("reviews")
 }

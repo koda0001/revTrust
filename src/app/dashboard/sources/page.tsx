@@ -95,6 +95,7 @@ export default function SourcesPage() {
             onChange={(event) => setSourceType(event.target.value)}
             className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white"
           >
+            <option value="google">Dodaj z Google</option>
             <option value="manual">Dodaj manualnie</option>
           </select>
         </div>
@@ -146,6 +147,31 @@ export default function SourcesPage() {
               />
             </div>
 
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-500 transition"
+            >
+              Dodaj recenzję
+            </button>
+
+            {status && <p className="text-sm text-slate-200 mt-2">{status}</p>}
+          </form>
+        )}
+
+        {sourceType === "google" && (
+                    <form onSubmit={handleSubmit} className="space-y-5 max-w-2xl">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-semibold mb-2">Autor</label>
+                <input
+                  value={form.author}
+                  onChange={(event) => setForm({ ...form, author: event.target.value })}
+                  placeholder="Imię i nazwisko"
+                  className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white"
+                />
+              </div>
+
+            </div>
             <button
               type="submit"
               className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-500 transition"
