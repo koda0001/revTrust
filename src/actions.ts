@@ -6,20 +6,18 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const SUPABASE_KEY = SERVICE_ROLE_KEY ?? SUPABASE_PUBLISHABLE_KEY;
 
-if (!SUPABASE_URL) {
-  throw new Error("Missing SUPABASE_URL (NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL) in environment");
-}
+let supabaseAdmin: ReturnType<typeof createClient> | null = null;
 
-if (!SUPABASE_KEY) {
-  throw new Error("Missing Supabase key in environment. Set SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.warn("Supabase credentials missing: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY not set.")
+} else {
+  supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 }
-
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: false },
-});
 
 async function getUserFromAccessToken(accessToken: string) {
   if (!accessToken) return null;
+
+  if (!supabaseAdmin) return null;
 
   try {
     const res = await supabaseAdmin.auth.getUser(accessToken);
@@ -113,6 +111,31 @@ export async function getGoogleReviews() {
   } catch (error) {
     console.error("Błąd podczas pobierania opinii z Google:", error);
     return [];
+  }
+}
+
+export async function getWeeklyReports() {
+  if (!supabaseAdmin) {
+    const msg = "Supabase admin client is not configured. Check SUPABASE_SERVICE_ROLE_KEY and SUPABASE_URL environment variables.";
+    console.error(msg);
+    throw new Error(msg);
+  }
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("weekly_reports")
+      .select("*")
+      .order("year", { ascending: false })
+      .order("week_number", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
+  } catch (err) {
+    console.error("getWeeklyReports error", err);
+    throw err;
   }
 }
 

@@ -28,6 +28,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             >
               Baza ocen
             </Link>
+            <Link
+              href="/dashboard/analysis"
+              className="block px-4 py-2 rounded-lg bg-slate-800 text-sm font-medium text-white"
+            >
+              Analiza
+            </Link>
           </nav>
         </div>
 

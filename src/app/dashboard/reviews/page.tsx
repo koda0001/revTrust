@@ -106,7 +106,7 @@ export default function ReviewsPage() {
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
           <p className="text-sm text-slate-400">Średnia ocena</p>
-          <p className="mt-2 text-3xl font-bold text-amber-400">{stats.average}</p>
+          <p className="mt-2 text-3xl font-bold text-amber-400">{stats.average}%</p>
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
           <p className="text-sm text-slate-400">Ostatnia opinia</p>
@@ -131,14 +131,13 @@ export default function ReviewsPage() {
                   <p className="text-sm text-slate-400">{review.source}</p>
                 </div>
                 <div className="rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-300">
-                  {review.rating}/5
+                  {review.rating}%
                 </div>
               </div>
 
               <p className="text-slate-200">{review.content}</p>
 
               <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-                <span>{review.user?.email ?? "Brak użytkownika"}</span>
                 <span>{new Date(review.createdAt).toLocaleString("pl-PL")}</span>
               </div>
             </article>

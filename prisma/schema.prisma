@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -17,23 +12,39 @@ model User {
   email     String   @unique
   name      String?
   createdAt DateTime @default(now())
-
   reviews   Review[]
 }
 
 model Review {
-  id          String   @id @default(uuid())
-  externalId  String?  @unique @map("external_id") // Unikalny hash z Google Maps
-  userId      String   @map("user_id")
-  author      String   // Kto wystawił (np. "Jan Kowalski")
-  source      String   // Źródło (np. "Google", "Trustpilot")
-  content     String   @db.Text // Treść opinii
-  rating      Int      // Ilość gwiazdek (np. 1-5)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // Relacja z użytkownikiem Supabase
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  author     String
+  source     String
+  content    String
+  rating     Int
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  externalId String?  @unique @map("external_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("reviews")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model weekly_reports {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String
+  year                Int
+  week_number         Int
+  sentiment_score     Int
+  summary_text        String
+  top_pros            Json?
+  top_cons            Json?
+  review_count        Int
+  created_at          DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  avg_rating          Decimal? @db.Decimal(3, 2)
+  rating_breakdown    Json?
+  sentiment_breakdown Json?
+  category_scores     Json?
+  critical_alerts     Json?
 }
