@@ -21,15 +21,18 @@ async function getUserFromAccessToken(accessToken: string) {
 
   try {
     const res = await supabaseAdmin.auth.getUser(accessToken);
-    const user = res?.data?.user ?? ((res as any)?.user ?? null);
-    return user;
-  } catch (err) {
+    return res?.data?.user ?? null;
+  } catch {
     return null;
   }
 }
 
-export async function getReviews() {
+export async function getReviews(accessToken: string) {
+  const user = await getUserFromAccessToken(accessToken);
+  if (!user) throw new Error("Not authenticated");
+
   return prisma.review.findMany({
+    where: { userId: user.id },
     orderBy: { createdAt: "desc" },
     include: {
       user: {
@@ -98,7 +101,13 @@ export async function getGoogleReviews() {
     }
 
     // Mapujemy opinie na przejrzysty format dla aplikacji
-    const formattedReviews = data.result.reviews.map((rev: any) => ({
+    const formattedReviews = data.result.reviews.map((rev: {
+      author_name: string;
+      rating: number;
+      text: string;
+      profile_photo_url?: string;
+      relative_time_description?: string;
+    }) => ({
       author: rev.author_name,
       rating: rev.rating,
       content: rev.text,
@@ -114,17 +123,23 @@ export async function getGoogleReviews() {
   }
 }
 
-export async function getWeeklyReports() {
+export async function getWeeklyReports(accessToken: string) {
   if (!supabaseAdmin) {
     const msg = "Supabase admin client is not configured. Check SUPABASE_SERVICE_ROLE_KEY and SUPABASE_URL environment variables.";
     console.error(msg);
     throw new Error(msg);
   }
 
+  const user = await getUserFromAccessToken(accessToken);
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+
   try {
     const { data, error } = await supabaseAdmin
       .from("weekly_reports")
       .select("*")
+      .eq("user_id", user.id)
       .order("year", { ascending: false })
       .order("week_number", { ascending: false });
 
@@ -141,7 +156,9 @@ export async function getWeeklyReports() {
 
 
 
-export default {
+const actions = {
   createReview,
   getReviews,
 };
+
+export default actions;

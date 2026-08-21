@@ -19,22 +19,29 @@ type Review = {
   };
 };
 
+type PageUser = {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+};
+
 export default function ReviewsPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<PageUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState<Review[]>([]);
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user ?? null;
 
-      if (!user) {
+      if (!currentUser) {
         router.push("/login");
         return;
       }
 
-      setUser(user);
+      setUser(currentUser);
       setLoading(false);
     };
 
@@ -46,9 +53,22 @@ export default function ReviewsPage() {
 
     const fetchReviews = async () => {
       try {
-        const response = await fetch("/api/reviews");
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+
+        if (!accessToken) {
+          throw new Error("Session expired");
+        }
+
+        const response = await fetch("/api/reviews", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
         if (!response.ok) {
-          throw new Error("Failed to fetch reviews");
+          const errorBody = await response.json().catch(() => ({}));
+          throw new Error(errorBody?.error || "Failed to fetch reviews");
         }
 
         const data = await response.json();

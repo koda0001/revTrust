@@ -41,7 +41,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <header className="mb-4">
-        <h1 className="text-3xl font-bold">Witaj w panelu!</h1>
+        <h1 className="text-3xl font-bold">Witaj w panelu! {user.email}</h1>
         <p className="mt-2 text-slate-400 max-w-2xl">
           Użyj menu po lewej stronie, aby przejść do strony głównej lub do źródeł danych.
         </p>

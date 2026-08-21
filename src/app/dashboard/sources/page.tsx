@@ -136,12 +136,12 @@ export default function SourcesPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-2">Ocena (1-5)</label>
+              <label className="block text-sm font-semibold mb-2">Ocena (0% - 100%)</label>
               <input
                 type="number"
                 value={form.rating}
-                min={1}
-                max={5}
+                min={0}
+                max={100}
                 onChange={(event) => setForm({ ...form, rating: Number(event.target.value) })}
                 className="w-32 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white"
               />

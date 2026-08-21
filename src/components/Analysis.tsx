@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
+import { supabase } from "@/lib/supabase"
 
 type SentimentBreakdown = {
   positive_percent: number
@@ -41,7 +42,18 @@ export default function Analysis() {
     async function fetchReports() {
       setLoading(true)
       try {
-        const res = await fetch("/api/weekly-reports")
+        const { data: { session } } = await supabase.auth.getSession()
+        const accessToken = session?.access_token
+
+        if (!accessToken) {
+          throw new Error("Not authenticated")
+        }
+
+        const res = await fetch("/api/weekly-reports", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
         if (!mounted) return
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
@@ -55,8 +67,8 @@ export default function Analysis() {
           setReports(data)
           setSelectedId((prev) => prev ?? String(data[0].id))
         }
-      } catch (err: any) {
-        setError(err?.message ?? String(err))
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : String(err))
       } finally {
         setLoading(false)
       }

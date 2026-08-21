@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server";
 import { createReview, getReviews } from "@/actions";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const reviews = await getReviews();
+    const authHeader = request.headers.get("authorization") ?? "";
+    const accessToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : authHeader.trim();
+
+    if (!accessToken) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    const reviews = await getReviews(accessToken);
     return NextResponse.json(reviews, { status: 200 });
   } catch (error) {
     console.error("Błąd pobierania review:", error);
     const message = error instanceof Error ? error.message : "Wystąpił błąd serwera.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: error instanceof Error && error.message === "Not authenticated" ? 401 : 500 });
   }
 }
 
