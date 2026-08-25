@@ -34,24 +34,16 @@ export async function getReviews(accessToken: string) {
   return prisma.review.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          name: true,
-        },
-      },
-    },
   });
 }
 
-export async function createReview({ author, source, content, rating, accessToken }: {
+export async function createReview({ author, source, content, rating, accessToken, locationId }: {
   author: string;
   source: string;
   content: string;
   rating: number;
   accessToken: string;
+  locationId?: string;
 }) {
   const user = await getUserFromAccessToken(accessToken);
   if (!user) throw new Error("Not authenticated");
@@ -69,10 +61,110 @@ export async function createReview({ author, source, content, rating, accessToke
       content,
       rating: Number(rating),
       userId: user.id,
+      location_id: locationId,
     },
   });
 
   return review;
+}
+
+export async function getLocations(accessToken: string) {
+  const user = await getUserFromAccessToken(accessToken);
+  if (!user) throw new Error("Not authenticated");
+
+  return prisma.location.findMany({
+    where: { user_id: user.id },
+    orderBy: { created_at: "desc" },
+  });
+}
+
+export async function createLocation({ name, googleMapsUrl, accessToken }: {
+  name: string;
+  googleMapsUrl: string;
+  accessToken: string;
+}) {
+  const user = await getUserFromAccessToken(accessToken);
+  if (!user) throw new Error("Not authenticated");
+
+  if (!name || !googleMapsUrl) {
+    throw new Error("Nazwa i link Google Maps są wymagane");
+  }
+
+  // Podstawowa walidacja URL
+  try {
+    new URL(googleMapsUrl);
+  } catch {
+    throw new Error("Nieprawidłowy URL Google Maps");
+  }
+
+  const location = await prisma.location.create({
+    data: {
+      user_id: user.id,
+      name,
+      google_maps_url: googleMapsUrl,
+    },
+  });
+
+  return location;
+}
+
+export async function updateLocation({ id, name, googleMapsUrl, accessToken }: {
+  id: string;
+  name: string;
+  googleMapsUrl: string;
+  accessToken: string;
+}) {
+  const user = await getUserFromAccessToken(accessToken);
+  if (!user) throw new Error("Not authenticated");
+
+  // Sprawdzenie, że lokalizacja należy do użytkownika
+  const location = await prisma.location.findFirst({
+    where: { id, user_id: user.id },
+  });
+
+  if (!location) {
+    throw new Error("Lokalizacja nie znaleziona");
+  }
+
+  if (!name || !googleMapsUrl) {
+    throw new Error("Nazwa i link Google Maps są wymagane");
+  }
+
+  // Podstawowa walidacja URL
+  try {
+    new URL(googleMapsUrl);
+  } catch {
+    throw new Error("Nieprawidłowy URL Google Maps");
+  }
+
+  return prisma.location.update({
+    where: { id },
+    data: {
+      name,
+      google_maps_url: googleMapsUrl,
+    },
+  });
+}
+
+export async function deleteLocation({ id, accessToken }: {
+  id: string;
+  accessToken: string;
+}) {
+  const user = await getUserFromAccessToken(accessToken);
+  if (!user) throw new Error("Not authenticated");
+
+  // Sprawdzenie, że lokalizacja należy do użytkownika
+  const location = await prisma.location.findFirst({
+    where: { id, user_id: user.id },
+  });
+
+  if (!location) {
+    throw new Error("Lokalizacja nie znaleziona");
+  }
+
+  return prisma.location.delete({
+    where: { id },
+  });
 }
 
 export async function getGoogleReviews() {

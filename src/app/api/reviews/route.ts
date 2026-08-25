@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { author, source, content, rating, accessToken } = body;
+    const { author, source, content, rating, accessToken, locationId } = body;
 
     if (!author || !source || !content || !rating || !accessToken) {
       return NextResponse.json({ error: "Brak wymaganych danych lub sesji." }, { status: 400 });
@@ -34,6 +34,7 @@ export async function POST(request: Request) {
       content,
       rating: Number(rating),
       accessToken,
+      locationId,
     });
 
     return NextResponse.json({ review }, { status: 201 });

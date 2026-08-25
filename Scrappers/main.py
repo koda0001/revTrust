@@ -10,7 +10,7 @@ from supabase import Client, create_client
 
 # --- KONFIGURACJA ---
 DEBUG_MODE = False
-SAVE_TO_JSON = False  # Przełącznik pełnego pliku JSON (domyślnie wyłączony)
+SAVE_TO_JSON = False  # Przełącznik pełnego pliku JSON
 SAVE_TO_SUPABASE = True  # Przełącznik wysyłki do bazy
 
 load_dotenv()
@@ -18,21 +18,37 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 TEST_USER_ID = os.getenv("TEST_USER_ID")
-
-SEARCH_QUERY = "Zamek Królewski w Warszawie"
-MAPS_URL = (
-    f"https://www.google.com/maps/search/{SEARCH_QUERY.replace(' ', '+')}"
-)
+LOCATION_ID = "b643ee7a-2de6-4758-b574-589620c22fab"
 
 supabase: Client = (
     create_client(SUPABASE_URL, SUPABASE_KEY) if SAVE_TO_SUPABASE else None
 )
 
 
+def get_requested_loc_url(user_id: str, loc_id: str) -> str:
+    """Pobiera dokładny URL do Google Maps z tabeli locations."""
+    try:
+        response = (
+            supabase.table("locations")
+            .select("google_maps_url")
+            .eq("user_id", user_id)
+            .eq("id", loc_id)
+            .execute()
+        )
+        if response.data and len(response.data) > 0:
+            return response.data[0]["google_maps_url"]
+        else:
+            print(f"[SUPABASE] Nie znaleziono URL dla location_id: {loc_id}")
+            return ""
+    except Exception as e:
+        print(f"[SUPABASE] Błąd pobierania URL: {e}")
+        return ""
+
+
 def get_current_week_key() -> str:
     now = datetime.now(timezone.utc)
     year, week, _ = now.isocalendar()
-    return f"{year}-W{week:02d}"  # Zwraca np. "2026-W34"
+    return f"{year}-W{week:02d}"
 
 
 def save_to_json(data, filename="reviews.json"):
@@ -59,7 +75,7 @@ def parse_rating_to_percent(rating_str: str) -> int:
 
 
 def prepare_review_for_db(
-    raw_review: dict, user_id: str, source: str = "Google"
+    raw_review: dict, user_id: str, loc_id: str, source: str = "Google"
 ) -> dict:
     rating_percent = parse_rating_to_percent(raw_review.get("rating", ""))
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -68,6 +84,7 @@ def prepare_review_for_db(
         "id": str(uuid.uuid4()),
         "external_id": raw_review["review_id"],
         "user_id": user_id,
+        "location_id": loc_id,  # <-- TUTAJ DODAJEMY POWIĄZANIE Z LOKALIZACJĄ!
         "author": raw_review["author"],
         "source": source,
         "content": raw_review["content"],
@@ -77,7 +94,7 @@ def prepare_review_for_db(
     }
 
 
-def upload_to_supabase(raw_results: list, user_id: str):
+def upload_to_supabase(raw_results: list, user_id: str, loc_id: str):
     if not raw_results:
         print("[SUPABASE] Brak danych do wysłania.")
         return
@@ -87,23 +104,35 @@ def upload_to_supabase(raw_results: list, user_id: str):
     )
 
     formatted_data = [
-        prepare_review_for_db(review, user_id) for review in raw_results
+        prepare_review_for_db(review, user_id, loc_id) for review in raw_results
     ]
 
     try:
         response = (
             supabase.table("reviews")
-            .upsert(formatted_data, on_conflict="external_id")
+            .upsert(
+                formatted_data,
+                on_conflict="external_id",
+                ignore_duplicates=True,
+            )
             .execute()
         )
+        inserted_count = len(response.data) if response.data else 0
         print(
-            f"[SUPABASE] Sukces! Zapisano/Zaktualizowano {len(response.data)} rekordów w bazie."
+            f"[SUPABASE] Sukces! Dodano {inserted_count} nowych opinii do lokalizacji {loc_id}."
         )
     except Exception as e:
         print(f"[SUPABASE] Błąd podczas zapisu do bazy: {e}")
 
 
 async def main():
+    # Pobieramy URL dynamicznie przed uruchomieniem przeglądarki
+    maps_url = get_requested_loc_url(TEST_USER_ID, LOCATION_ID)
+
+    if not maps_url:
+        print("[ERROR] Brak prawidłowego URL do skrobania. Przerywam.")
+        return
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=False, slow_mo=500 if DEBUG_MODE else 0
@@ -111,8 +140,8 @@ async def main():
         context = await browser.new_context(locale="pl-PL")
         page = await context.new_page()
 
-        print("1. Otwieram wyszukiwarkę Google Maps...")
-        await page.goto(MAPS_URL)
+        print(f"1. Otwieram wyszukiwarkę Google Maps: {maps_url}...")
+        await page.goto(maps_url)
         await page.wait_for_timeout(3000)
 
         try:
@@ -217,7 +246,6 @@ async def main():
                 if review_id:
                     results.append({
                         "review_id": review_id,
-                        "search_query": SEARCH_QUERY,
                         "author": author,
                         "author_info": author_info,
                         "rating": rating,
@@ -234,7 +262,7 @@ async def main():
             save_to_json(results)
 
         if SAVE_TO_SUPABASE:
-            upload_to_supabase(results, TEST_USER_ID)
+            upload_to_supabase(results, TEST_USER_ID, LOCATION_ID)
 
         if DEBUG_MODE:
             print("\n[DEBUG] Przeglądarka pozostaje otwarta.")

@@ -12,6 +12,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TEST_USER_ID = os.getenv("TEST_USER_ID")
+LOCATION_ID = "b643ee7a-2de6-4758-b574-589620c22fab"
 
 if not all([SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY]):
     raise ValueError("Brak wymaganych kluczy w pliku .env!")
@@ -25,14 +26,17 @@ def get_current_week_key() -> str:
     return f"{year}-W{week:02d}"
 
 
-def fetch_reviews_for_week(user_id: str, week_key: str) -> list:
-    """Pobiera z Supabase opinie wybranego użytkownika wyłącznie z danego tygodnia."""
-    print(f"[SUPABASE] Pobieranie opinii dla klucza tygodnia: {week_key}...")
+def fetch_reviews_for_week(user_id: str, loc_id: str, week_key: str) -> list:
+    """Pobiera z Supabase opinie dla wybranego użytkownika, lokalizacji i tygodnia."""
+    print(
+        f"[SUPABASE] Pobieranie opinii dla location_id: {loc_id} i week_key: {week_key}..."
+    )
     try:
         response = (
             supabase.table("reviews")
             .select("*")
             .eq("user_id", user_id)
+            .eq("location_id", loc_id)
             .eq("week_key", week_key)
             .execute()
         )
@@ -55,15 +59,18 @@ def format_reviews_for_ai(reviews: list) -> str:
     return "\n".join(lines)
 
 
-def analyze_and_save_report(user_id: str, week_key: str = None):
-    # Jeśli nie podano week_key, bierze obecny tydzień
+def analyze_and_save_report(
+    user_id: str, loc_id: str, week_key: str = None
+):
     if not week_key:
         week_key = get_current_week_key()
 
-    reviews = fetch_reviews_for_week(user_id, week_key)
+    reviews = fetch_reviews_for_week(user_id, loc_id, week_key)
 
     if not reviews:
-        print(f"Brak opinii do przeanalizowania dla tygodnia {week_key}.")
+        print(
+            f"Brak opinii do przeanalizowania dla lokalizacji {loc_id} i tygodnia {week_key}."
+        )
         return
 
     print(
@@ -73,7 +80,7 @@ def analyze_and_save_report(user_id: str, week_key: str = None):
 
     prompt = f"""
     Jesteś zaawansowanym systemem analitycznym CX (Customer Experience). 
-    Przeanalizuj poniższe opinie z tego tygodnia i wygeneruj pełny raport w WYŁĄCZNIE czystym formacie JSON (bez bloków markdown, bez ```json).
+    Przeanalizuj poniższe opinie z tego tygodnia dla wybranej lokalizacji i wygeneruj pełny raport w WYŁĄCZNIE czystym formacie JSON (bez bloków markdown, bez ```json).
 
     Struktura JSON:
     {{
@@ -102,73 +109,6 @@ def analyze_and_save_report(user_id: str, week_key: str = None):
     print("Wysyłanie danych do Gemini API...")
     client = genai.Client(api_key=GEMINI_API_KEY)
 
-    # Zabezpieczenie przed ewentualnym przeciążeniem 503
     max_retries = 3
     raw_text = ""
-    for attempt in range(1, max_retries + 1):
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=prompt,
-            )
-            raw_text = response.text.strip()
-            break
-        except Exception as e:
-            if "503" in str(e) and attempt < max_retries:
-                print(
-                    f"[GEMINI] Przeciążenie (503). Próba {attempt}/{max_retries}. Czekam 5 sek..."
-                )
-                time.sleep(5)
-            else:
-                print(f"Błąd komunikacji z Gemini: {e}")
-                return
-
-    if raw_text.startswith("```json"):
-        raw_text = raw_text.replace("```json", "").replace("```", "").strip()
-
-    try:
-        report_data = json.loads(raw_text)
-
-        # Wyciąganie roku i numeru tygodnia bezpośrednio z week_key (np. "2026-W34")
-        year_str, week_str = week_key.split("-W")
-        year = int(year_str)
-        week_num = int(week_str)
-
-        db_payload = {
-            "user_id": user_id,
-            "year": year,
-            "week_number": week_num,
-            "week_key": week_key,
-            "sentiment_score": report_data.get("sentiment_score", 50),
-            "summary_text": report_data.get("summary_text", ""),
-            "top_pros": report_data.get("top_pros", []),
-            "top_cons": report_data.get("top_cons", []),
-            "review_count": len(reviews),
-            "avg_rating": report_data.get("avg_rating_calculated", 0.0),
-            "sentiment_breakdown": report_data.get("sentiment_breakdown", {}),
-            "category_scores": report_data.get("category_analysis", []),
-            "critical_alerts": report_data.get("critical_alerts", []),
-        }
-
-        print(
-            f"[SUPABASE] Zapisywanie raportu pod kluczem {week_key} do bazy..."
-        )
-        save_res = (
-            supabase.table("weekly_reports")
-            .upsert(db_payload, on_conflict="user_id,week_key")
-            .execute()
-        )
-        print(f"\n[SUKCES] Zapisano raport za {week_key}!")
-        print(
-            "Treść raportu:",
-            json.dumps(report_data, ensure_ascii=False, indent=2),
-        )
-
-    except Exception as e:
-        print(f"Błąd podczas parsowania JSON lub zapisu do Supabase: {e}")
-
-
-if __name__ == "__main__":
-    # Możesz przekazać konkretny week_key, np. analyze_and_save_report(TEST_USER_ID, "2026-W33")
-    # Bez drugiego argumentu wygeneruje analizę dla bieżącego tygodnia:
-    analyze_and_save_report(TEST_USER_ID)
+    for attempt in range(1
