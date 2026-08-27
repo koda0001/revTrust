@@ -33,6 +33,21 @@ export async function getReviews(accessToken: string) {
 
   return prisma.review.findMany({
     where: { userId: user.id },
+    select: {
+      id: true,
+      author: true,
+      source: true,
+      content: true,
+      rating: true,
+      createdAt: true,
+      updatedAt: true,
+      location_id: true,
+      location: {
+        select: {
+          name: true,
+        },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -223,14 +238,15 @@ export async function getWeeklyReports(accessToken: string) {
   }
 
   const user = await getUserFromAccessToken(accessToken);
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
+  if (!user) throw new Error("Not authenticated");
 
   try {
     const { data, error } = await supabaseAdmin
       .from("weekly_reports")
-      .select("*")
+      .select(`*,
+              locations (
+                name
+              )`)
       .eq("user_id", user.id)
       .order("year", { ascending: false })
       .order("week_number", { ascending: false });

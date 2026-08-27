@@ -18,7 +18,7 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 TEST_USER_ID = os.getenv("TEST_USER_ID")
-LOCATION_ID = "b643ee7a-2de6-4758-b574-589620c22fab"
+LOCATION_ID = "af20ddad-8a2f-49c3-a76f-35920836ec5c"
 
 supabase: Client = (
     create_client(SUPABASE_URL, SUPABASE_KEY) if SAVE_TO_SUPABASE else None
@@ -141,7 +141,7 @@ async def main():
         page = await context.new_page()
 
         print(f"1. Otwieram wyszukiwarkę Google Maps: {maps_url}...")
-        await page.goto(maps_url)
+        await page.goto(maps_url, wait_until="domcontentloaded")
         await page.wait_for_timeout(3000)
 
         try:

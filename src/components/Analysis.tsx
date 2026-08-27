@@ -18,6 +18,7 @@ type CategoryAnalysis = {
 
 export type WeeklyReport = {
   id: string
+  location_id: string
   week_number: number
   year: number
   review_count: number
@@ -29,10 +30,14 @@ export type WeeklyReport = {
   top_cons: string[]
   category_analysis: CategoryAnalysis[]
   critical_alerts?: string[]
+  locations?: {
+    name: string
+  }
 }
 
 export default function Analysis() {
   const [reports, setReports] = useState<WeeklyReport[] | null>(null)
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,18 +64,22 @@ export default function Analysis() {
           const body = await res.json().catch(() => ({}))
           throw new Error(body?.error ?? `HTTP ${res.status}`)
         }
-        const data = await res.json()
+        const data: WeeklyReport[] = await res.json()
+        
         if (!data || data.length === 0) {
           setReports([])
+          setSelectedLocation(null)
           setSelectedId(null)
         } else {
           setReports(data)
-          setSelectedId((prev) => prev ?? String(data[0].id))
+          const firstLoc = data[0].location_id
+          setSelectedLocation(firstLoc)
+          setSelectedId(String(data[0].id))
         }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : String(err))
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
 
@@ -80,7 +89,35 @@ export default function Analysis() {
     }
   }, [])
 
-  const selected = useMemo(() => reports?.find((r) => r.id === selectedId) ?? null, [reports, selectedId])
+  const locationsList = useMemo(() => {
+    if (!reports) return []
+    const map = new Map<string, string>()
+    reports.forEach((r) => {
+      const locName = r.locations?.name || `Lokalizacja (${r.location_id.slice(0, 8)}...)`
+      map.set(r.location_id, locName)
+    })
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }))
+  }, [reports])
+
+  const availableWeeks = useMemo(() => {
+    if (!reports || !selectedLocation) return []
+    return reports.filter((r) => r.location_id === selectedLocation)
+  }, [reports, selectedLocation])
+
+  const handleLocationChange = (locId: string | null) => {
+    setSelectedLocation(locId)
+    if (!locId || !reports) {
+      setSelectedId(null)
+      return
+    }
+    const firstReportForLoc = reports.find((r) => r.location_id === locId)
+    setSelectedId(firstReportForLoc ? String(firstReportForLoc.id) : null)
+  }
+
+  const selected = useMemo(() => {
+    if (!reports || !selectedId) return null
+    return reports.find((r) => String(r.id) === selectedId) ?? null
+  }, [reports, selectedId])
 
   function formatOption(r: WeeklyReport) {
     return `Tydzień ${r.week_number} (${r.year})`
@@ -94,13 +131,13 @@ export default function Analysis() {
 
   return (
     <div className="p-6">
-      {/* match dashboard dark theme */}
       {error ? (
         <div className="mb-4 p-3 rounded-2xl bg-rose-900/30 border border-rose-800 text-rose-300">
           Błąd podczas pobierania raportów: {error}
         </div>
       ) : null}
-      <div className="flex items-start justify-between gap-4 mb-6">
+
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-white">Analityka Tygodniowa</h2>
           <div className="mt-2 text-sm text-slate-400">
@@ -114,33 +151,42 @@ export default function Analysis() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:block">
-            {selected ? (
-              <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-800 text-sm text-amber-300">
-                Przeanalizowano {selected.review_count} opinii
-              </span>
-            ) : null}
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {selected ? (
+            <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full bg-slate-800 text-sm text-amber-300 border border-slate-700">
+              Przeanalizowano {selected.review_count} opinii
+            </span>
+          ) : null}
 
-          <div>
-            <select
-              className="rounded-md border border-slate-800 px-3 py-2 bg-slate-950 text-white"
-              value={selectedId ?? ""}
-              onChange={(e) => setSelectedId(e.target.value || null)}
-            >
-              <option value="">Wybierz tydzień…</option>
-              {reports?.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {formatOption(r)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            className="rounded-md border border-slate-800 px-3 py-2 bg-slate-950 text-white focus:outline-none focus:border-slate-600"
+            value={selectedLocation ?? ""}
+            onChange={(e) => handleLocationChange(e.target.value || null)}
+          >
+            <option value="">Wybierz lokalizację…</option>
+            {locationsList.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="rounded-md border border-slate-800 px-3 py-2 bg-slate-950 text-white focus:outline-none focus:border-slate-600 disabled:opacity-50"
+            value={selectedId ?? ""}
+            disabled={!selectedLocation || availableWeeks.length === 0}
+            onChange={(e) => setSelectedId(e.target.value || null)}
+          >
+            <option value="">Wybierz tydzień…</option>
+            {availableWeeks.map((r) => (
+              <option key={r.id} value={r.id}>
+                {formatOption(r)}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
           <div className="flex items-center justify-between">
@@ -162,7 +208,9 @@ export default function Analysis() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm text-slate-400">Średnia Ocena</div>
-              <div className="mt-2 text-2xl font-semibold text-white">{selected ? `${selected.avg_rating.toFixed(2)} / 5.0` : "-"}</div>
+              <div className="mt-2 text-2xl font-semibold text-white">
+                {selected ? `${selected.avg_rating ? selected.avg_rating.toFixed(2) : '0.00'} / 5.0` : "-"}
+              </div>
             </div>
             <div className="h-12 w-12 rounded-full bg-amber-500 flex items-center justify-center">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -176,22 +224,21 @@ export default function Analysis() {
           <div className="text-sm text-slate-400">Rozkład Sentymentu</div>
           <div className="mt-3 h-6 w-full bg-slate-800/40 rounded overflow-hidden flex">
             <div
-              className="h-full bg-emerald-500"
-              style={{ width: selected ? `${selected.sentiment_breakdown.positive_percent}%` : "0%" }}
+              className="h-full bg-emerald-500 transition-all duration-300"
+              style={{ width: selected?.sentiment_breakdown ? `${selected.sentiment_breakdown.positive_percent}%` : "0%" }}
             />
             <div
-              className="h-full bg-slate-600"
-              style={{ width: selected ? `${selected.sentiment_breakdown.neutral_percent}%` : "0%" }}
+              className="h-full bg-slate-600 transition-all duration-300"
+              style={{ width: selected?.sentiment_breakdown ? `${selected.sentiment_breakdown.neutral_percent}%` : "0%" }}
             />
             <div
-              className="h-full bg-rose-500"
-              style={{ width: selected ? `${selected.sentiment_breakdown.negative_percent}%` : "0%" }}
+              className="h-full bg-rose-500 transition-all duration-300"
+              style={{ width: selected?.sentiment_breakdown ? `${selected.sentiment_breakdown.negative_percent}%` : "0%" }}
             />
           </div>
         </div>
       </div>
 
-      {/* Alerts */}
       {selected && Array.isArray(selected.critical_alerts) && selected.critical_alerts.length > 0 ? (
         <div className="mb-6 rounded-2xl border border-rose-800 bg-rose-900/20 p-4">
           <div className="flex items-center gap-3 mb-2">
@@ -202,19 +249,20 @@ export default function Analysis() {
             </svg>
             <div className="font-semibold text-rose-200">Krytyczne ostrzeżenia</div>
           </div>
-          <ul className="list-disc pl-5 text-sm text-rose-200">
+          <ul className="list-disc pl-5 text-sm text-rose-200 space-y-1">
             {selected.critical_alerts.map((a, idx) => (
-              <li key={idx} className="mb-1">{a}</li>
+              <li key={idx}>{a}</li>
             ))}
           </ul>
         </div>
       ) : null}
 
-      {/* Summary & Category Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
           <h3 className="text-lg font-medium mb-2 text-white">Podsumowanie biznesowe</h3>
-          <p className="text-sm text-slate-200">{selected ? selected.summary_text : "Brak podsumowania"}</p>
+          <p className="text-sm text-slate-200 leading-relaxed">
+            {selected ? selected.summary_text : "Brak podsumowania"}
+          </p>
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
@@ -226,21 +274,21 @@ export default function Analysis() {
                   <BarChart data={selected.category_analysis.map((c) => ({ name: c.category, mention_count: c.mention_count }))}>
                     <XAxis dataKey="name" stroke="#94a3b8" />
                     <YAxis stroke="#94a3b8" />
-                    <Tooltip />
-                    <Bar dataKey="mention_count" fill="#60a5fa" />
+                    <Tooltip contentStyle={{ backgroundColor: "#020617", borderColor: "#1e293b", borderRadius: "8px" }} />
+                    <Bar dataKey="mention_count" fill="#60a5fa" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
               <div className="space-y-2">
                 {selected.category_analysis.map((c) => (
-                  <div key={c.category} className="flex items-center justify-between">
+                  <div key={c.category} className="flex items-center justify-between p-2 rounded-lg bg-slate-900/50">
                     <div>
-                      <div className="font-medium text-white">{c.category}</div>
-                      <div className="text-sm text-slate-400">Wzmianki: {c.mention_count}</div>
+                      <div className="font-medium text-white text-sm">{c.category}</div>
+                      <div className="text-xs text-slate-400">Wzmianki: {c.mention_count}</div>
                     </div>
                     <div>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-sm ${c.sentiment.includes('pozy') ? 'bg-emerald-900/20 text-emerald-300' : 'bg-rose-900/20 text-rose-300'}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.sentiment.includes('pozy') ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-800' : 'bg-rose-900/40 text-rose-300 border border-rose-800'}`}>
                         {c.sentiment}
                       </span>
                     </div>
@@ -254,7 +302,6 @@ export default function Analysis() {
         </div>
       </div>
 
-      {/* Pros / Cons */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
           <h4 className="font-medium mb-3 text-white">Top Zalety</h4>
@@ -262,9 +309,9 @@ export default function Analysis() {
             <ul className="space-y-2">
               {selected.top_pros.map((p, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M9 11l3 3L22 4" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h7" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <svg className="shrink-0 mt-0.5" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 11l3 3L22 4" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h7" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <div className="text-sm text-slate-200">{p}</div>
                 </li>
@@ -281,10 +328,10 @@ export default function Analysis() {
             <ul className="space-y-2">
               {selected.top_cons.map((c, i) => (
                 <li key={i} className="flex items-start gap-3">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="9" stroke="#FB7185" strokeWidth="1.5" />
-                    <path d="M12 8v5" stroke="#FB7185" strokeWidth="1.6" strokeLinecap="round" />
-                    <path d="M12 15h.01" stroke="#FB7185" strokeWidth="1.6" strokeLinecap="round" />
+                  <svg className="shrink-0 mt-0.5" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="9" stroke="#FB7185" strokeWidth="2" />
+                    <path d="M12 8v5" stroke="#FB7185" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M12 15h.01" stroke="#FB7185" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                   <div className="text-sm text-slate-200">{c}</div>
                 </li>
