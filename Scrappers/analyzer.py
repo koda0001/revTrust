@@ -4,15 +4,23 @@ import os
 import time
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 from supabase import Client, create_client
 
 load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-TEST_USER_ID = os.getenv("TEST_USER_ID")
-LOCATION_ID = os.getenv("LOCATION_ID", "af20ddad-8a2f-49c3-a76f-35920836ec5c")
+
+# Precyzyjna weryfikacja zmiennych środowiskowych:
+missing_vars = []
+if not SUPABASE_URL: missing_vars.append("SUPABASE_URL")
+if not SUPABASE_KEY: missing_vars.append("SUPABASE_SERVICE_ROLE_KEY / SUPABASE_KEY")
+if not GEMINI_API_KEY: missing_vars.append("GEMINI_API_KEY")
+
+if missing_vars:
+    raise ValueError(f"Brakujące zmienne środowiskowe w GCP: {', '.join(missing_vars)}")
 
 if not all([SUPABASE_URL, SUPABASE_KEY, GEMINI_API_KEY]):
     raise ValueError("Brak wymaganych kluczy w pliku .env!")
@@ -32,15 +40,12 @@ def fetch_reviews_for_week(user_id: str, loc_id: str, week_key: str) -> list:
         f"[SUPABASE] Pobieranie opinii dla location_id: {loc_id} i week_key: {week_key}..."
     )
     try:
-        response = (
-            supabase.table("reviews")
-            .select("*")
-            .eq("user_id", user_id)
-            .eq("location_id", loc_id)
-            .eq("week_key", week_key)
-            .execute()
-        )
-        return response.data
+        query = supabase.table("reviews").select("*").eq("location_id", loc_id).eq("week_key", week_key)
+        if user_id:
+            query = query.eq("user_id", user_id)
+            
+        response = query.execute()
+        return response.data or []
     except Exception as e:
         print(f"[SUPABASE] Błąd pobierania danych: {e}")
         return []
@@ -60,8 +65,9 @@ def format_reviews_for_ai(reviews: list) -> str:
 
 
 def analyze_and_save_report(
-        user_id: str, loc_id: str, week_key: str = None
+    user_id: str, loc_id: str, week_key: str = None
 ):
+    """Generuje raport CX przy użyciu Gemini API i zapisuje go w tabeli weekly_reports."""
     if not week_key:
         week_key = get_current_week_key()
 
@@ -69,18 +75,18 @@ def analyze_and_save_report(
 
     if not reviews:
         print(
-            f"Brak opinii do przeanalizowania dla lokalizacji {loc_id} i tygodnia {week_key}."
+            f"[ANALYZER] Brak opinii do przeanalizowania dla lokalizacji {loc_id} i tygodnia {week_key}."
         )
         return
 
     print(
-        f"Znaleziono {len(reviews)} opinii dla {week_key}. Ściskanie danych dla AI..."
+        f"[ANALYZER] Znaleziono {len(reviews)} opinii dla {week_key}. Ściskanie danych dla AI..."
     )
     formatted_reviews = format_reviews_for_ai(reviews)
 
     prompt = f"""
     Jesteś zaawansowanym systemem analitycznym CX (Customer Experience). 
-    Przeanalizuj poniższe opinie z tego tygodnia dla wybranej lokalizacji i wygeneruj pełny raport w WYŁĄCZNIE czystym formacie JSON (bez bloków markdown, bez ```json).
+    Przeanalizuj poniższe opinie z tego tygodnia dla wybranej lokalizacji i wygeneruj pełny raport w wyznaczonym formacie JSON.
 
     Struktura JSON:
     {{
@@ -106,7 +112,7 @@ def analyze_and_save_report(
     {formatted_reviews}
     """
 
-    print("Wysyłanie danych do Gemini API...")
+    print("[GEMINI] Wysyłanie danych do Gemini API...")
     client = genai.Client(api_key=GEMINI_API_KEY)
 
     max_retries = 3
@@ -114,23 +120,23 @@ def analyze_and_save_report(
     for attempt in range(1, max_retries + 1):
         try:
             response = client.models.generate_content(
-                model="gemini-3.6-flash",
+                model="gemini-2.5-flash",
                 contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                ),
             )
             raw_text = response.text.strip()
             break
         except Exception as e:
-            if "503" in str(e) and attempt < max_retries:
+            if ("503" in str(e) or "429" in str(e)) and attempt < max_retries:
                 print(
-                    f"[GEMINI] Przeciążenie (503). Próba {attempt}/{max_retries}. Czekam 5 sek..."
+                    f"[GEMINI] Przeciążenie ({e}). Próba {attempt}/{max_retries}. Czekam 5 sek..."
                 )
                 time.sleep(5)
             else:
-                print(f"Błąd komunikacji z Gemini: {e}")
+                print(f"[GEMINI] Błąd komunikacji z Gemini: {e}")
                 return
-
-    if raw_text.startswith("```json"):
-        raw_text = raw_text.replace("```json", "").replace("```", "").strip()
 
     try:
         report_data = json.loads(raw_text)
@@ -160,11 +166,10 @@ def analyze_and_save_report(
             f"[SUPABASE] Zapisywanie raportu pod location_id={loc_id} i week_key={week_key}..."
         )
 
-        save_res = (
-            supabase.table("weekly_reports")
-            .upsert(db_payload, on_conflict="location_id,week_key")
-            .execute()
-        )
+        supabase.table("weekly_reports").upsert(
+            db_payload, on_conflict="location_id,week_key"
+        ).execute()
+
         print(f"\n[SUKCES] Zapisano raport dla {loc_id} za {week_key}!")
         print(
             "Treść raportu:",
@@ -172,8 +177,11 @@ def analyze_and_save_report(
         )
 
     except Exception as e:
-        print(f"Błąd podczas parsowania JSON lub zapisu do Supabase: {e}")
+        print(f"[ERROR] Błąd podczas parsowania JSON lub zapisu do Supabase: {e}")
 
 
 if __name__ == "__main__":
-    analyze_and_save_report(TEST_USER_ID, LOCATION_ID)
+    # Test lokalny
+    test_loc_id = os.getenv("TEST_LOCATION_ID", os.getenv("LOCATION_ID", "af20ddad-8a2f-49c3-a76f-35920836ec5c"))
+    test_user_id = os.getenv("TEST_USER_ID")
+    analyze_and_save_report(test_user_id, test_loc_id)

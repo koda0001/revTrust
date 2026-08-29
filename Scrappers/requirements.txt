@@ -1,0 +1,5 @@
+functions-framework>=3.0.0
+supabase
+google-genai
+python-dotenv
+playwright
