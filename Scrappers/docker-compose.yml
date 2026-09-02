@@ -1,0 +1,17 @@
+services:
+  # 1. Serwer HTTP (tak jak działa na GCP Cloud Functions)
+  scraper-server:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+
+  # 2. Szybki test pojedynczego skryptu (uruchamia bezpośrednio googlescrap.py)
+  scraper-test:
+    build: .
+    env_file:
+      - .env
+    command: python googlescrap.py
+    volumes:
+      - .:/workspace  # Przekazuje kod 'na żywo' - zmiana w pliku działa od razu bez rebuildowania!
