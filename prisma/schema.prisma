@@ -15,25 +15,25 @@ model User {
 }
 
 model Review {
-  id          String     @id @default(uuid())
-  userId      String     @map("user_id")
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
   author      String
   source      String
   content     String
   rating      Int
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  externalId  String?    @unique @map("external_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  externalId  String?   @unique @map("external_id")
   week_key    String?
-  location_id String?    @db.Uuid
-  location    Location?  @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  location_id String?   @db.Uuid
+  location    Location? @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("reviews")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model weekly_reports {
-  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id             String
   year                Int
   week_number         Int
@@ -42,15 +42,15 @@ model weekly_reports {
   top_pros            Json?
   top_cons            Json?
   review_count        Int
-  created_at          DateTime   @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  avg_rating          Decimal?   @db.Decimal(3, 2)
+  created_at          DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  avg_rating          Decimal?  @db.Decimal(3, 2)
   rating_breakdown    Json?
   sentiment_breakdown Json?
   category_scores     Json?
   critical_alerts     Json?
-  location_id         String?    @db.Uuid
+  location_id         String?   @db.Uuid
   week_key            String?
-  location            Location?  @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  location            Location? @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([location_id, week_key], map: "unique_location_week_key")
 }
@@ -61,8 +61,34 @@ model Location {
   name            String
   google_maps_url String
   created_at      DateTime?        @default(now()) @db.Timestamptz(6)
+  is_active       Boolean?         @default(true)
+  source          String?
   reviews         Review[]
+  scraping_tasks  scraping_tasks[]
   weekly_reports  weekly_reports[]
 
   @@map("locations")
+}
+
+model scraping_tasks {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  location_id String    @db.Uuid
+  status      String    @default("pending")
+  week_key    String
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+  user_id     String?
+  task        String?
+  locations   Location  @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model sources_list {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scrap_status     String?
+  gcp_py_activator String?
+  name             String?
+
+  @@map("sources_lists")
 }

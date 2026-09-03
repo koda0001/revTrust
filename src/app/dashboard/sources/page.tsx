@@ -30,6 +30,10 @@ export default function SourcesPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<"success" | "error" | null>(null);
 
+  //sources states for list pickup
+  const [sources, setSources] = useState<Location[]>([]);
+  const [sourcesLoading, setSourcesLoading] = useState(false);
+  
   // Locations state
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
@@ -40,7 +44,7 @@ export default function SourcesPage() {
     sourceType: "",
     url: "",
   });
-
+  
   // Review form state
   const [form, setForm] = useState({
     author: "",
@@ -70,6 +74,7 @@ export default function SourcesPage() {
   useEffect(() => {
     if (accessToken) {
       fetchLocations();
+      fetchSources();
     }
   }, [accessToken]);
 
@@ -94,6 +99,30 @@ export default function SourcesPage() {
       console.error("Błąd pobierania lokalizacji:", error);
     } finally {
       setLocationsLoading(false);
+    }
+  };
+
+  const fetchSources = async () => {
+    if (!accessToken) return;
+
+    setSourcesLoading(true);
+    try {
+      const response = await fetch("/api/sources", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Nie udało się pobrać źródeł");
+      }
+
+      const data = await response.json();
+      setSources(data);
+    } catch (error) {
+      console.error("Błąd pobierania źródeł:", error);
+    } finally {
+      setSourcesLoading(false);
     }
   };
 
@@ -309,7 +338,9 @@ export default function SourcesPage() {
                 <label className="block text-sm font-semibold mb-2">
                   1. Wybierz źródło *
                 </label>
-                <select
+
+
+                  <select
                   value={locationForm.sourceType}
                   onChange={(e) =>
                     setLocationForm({
@@ -319,14 +350,15 @@ export default function SourcesPage() {
                   }
                   className="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500"
                   required
-                >
-                  <option value="" disabled>-- Wybierz źródło --</option>
-                  <option value="google">Google Maps</option>
-                  <option value="facebook">Facebook</option>
-                  <option value="other">Inne źródło</option>
-                </select>
-              </div>
+                  >
+                    <option value="" disabled>-- Wybierz źródło --</option>
+                    {sources.map((sources) => (
+                      <option key={sources.id} value={sources.id}>{sources.name}</option>
+                    ))}
 
+                  </select>
+              </div>
+              
               {/* KROK 2: Formularz rozwija się dopiero po wybraniu źródła */}
               {locationForm.sourceType && (
                 <>

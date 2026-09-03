@@ -262,6 +262,12 @@ export async function getWeeklyReports(accessToken: string) {
   }
 }
 
+export async function getSourcesList(accessToken: string) {
+  const user = await getUserFromAccessToken(accessToken);
+  if (!user) throw new Error("Not authenticated");
+
+  return prisma.sources_list.findMany();
+}
 
 
 const actions = {

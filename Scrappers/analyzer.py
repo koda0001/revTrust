@@ -68,6 +68,7 @@ def analyze_and_save_report(
     user_id: str, loc_id: str, week_key: str = None
 ):
     """Generuje raport CX przy użyciu Gemini API i zapisuje go w tabeli weekly_reports."""
+    #TODO po co mi tu get week key skoro on jest w requescie z bazy brany, cos tam musi go dodawac i wgl brakuje chyba tego
     if not week_key:
         week_key = get_current_week_key()
 
@@ -177,11 +178,12 @@ def analyze_and_save_report(
         )
 
     except Exception as e:
-        print(f"[ERROR] Błąd podczas parsowania JSON lub zapisu do Supabase: {e}")
+        print(f"[ERROR] Błąd podczas \parsowania JSON lub zapisu do Supabase: {e}")
 
 
 if __name__ == "__main__":
-    # Test lokalny
+    # Test lokalsa
     test_loc_id = os.getenv("TEST_LOCATION_ID", os.getenv("LOCATION_ID", "af20ddad-8a2f-49c3-a76f-35920836ec5c"))
     test_user_id = os.getenv("TEST_USER_ID")
-    analyze_and_save_report(test_user_id, test_loc_id)
+    week_key = "2026-W35" # ad something here for the testing pls
+    analyze_and_save_report(test_user_id, test_loc_id, week_key)
