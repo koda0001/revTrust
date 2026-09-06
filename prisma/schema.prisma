@@ -90,5 +90,5 @@ model sources_list {
   gcp_py_activator String?
   name             String?
 
-  @@map("sources_lists")
+  @@map("sources_list")
 }
