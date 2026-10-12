@@ -56,16 +56,16 @@ model weekly_reports {
 }
 
 model Location {
-  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id         String           @db.Uuid
-  name            String
-  google_maps_url String
-  created_at      DateTime?        @default(now()) @db.Timestamptz(6)
-  is_active       Boolean?         @default(true)
-  source          String?
-  reviews         Review[]
-  scraping_tasks  scraping_tasks[]
-  weekly_reports  weekly_reports[]
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String           @db.Uuid
+  name           String
+  location_url   String
+  created_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  is_active      Boolean?         @default(true)
+  source         String?
+  reviews        Review[]
+  scraping_tasks scraping_tasks[]
+  weekly_reports weekly_reports[]
 
   @@map("locations")
 }

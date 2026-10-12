@@ -145,7 +145,7 @@ export default function SourcesPage() {
     setLocationForm({
       name: location.name,
       sourceId: location.source_id || "",
-      url: location.google_maps_url,
+      url: location.location_url,
     });
     setShowAddLocation(true);
   };

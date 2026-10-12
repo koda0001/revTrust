@@ -34,8 +34,8 @@ export function LocationList({
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {locations.map((location) => {
-        const matchedSource = sources.find((source) => source.id === location.source_id);
-        const sourceLabel = matchedSource?.name || location.source_type || "Niezdefiniowane";
+        const matchedSource = sources.find((source) => source.name === location.name);
+        const sourceLabel = matchedSource?.name || location.source || "Niezdefiniowane";
 
         return (
           <div
@@ -49,7 +49,7 @@ export function LocationList({
               </span>
             </div>
             <a
-              href={location.google_maps_url}
+              href={location.location_url}
               target="_blank"
               rel="noopener noreferrer"
               className="text-indigo-400 hover:text-indigo-300 text-sm mb-4 block truncate"

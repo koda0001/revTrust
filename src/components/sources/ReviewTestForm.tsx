@@ -28,7 +28,7 @@ export function ReviewTestForm({
     const matchedSource = sources.find((source) => source.id === location.source_id);
     return {
       ...location,
-      sourceLabel: matchedSource?.name || location.source_type || "inne",
+      sourceLabel: matchedSource?.name || location.source || "inne",
     };
   });
 

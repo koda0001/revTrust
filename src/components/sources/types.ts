@@ -10,8 +10,8 @@ export interface Location {
   id: string;
   name: string;
   source_id?: string;
-  source_type?: string;
-  google_maps_url: string;
+  source?: string;
+  location_url: string;
   created_at: string;
 }
 

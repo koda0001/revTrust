@@ -116,7 +116,7 @@ export async function createLocation({ name, googleMapsUrl, accessToken }: {
     data: {
       user_id: user.id,
       name,
-      google_maps_url: googleMapsUrl,
+      location_url: googleMapsUrl,
     },
   });
 
@@ -156,7 +156,7 @@ export async function updateLocation({ id, name, googleMapsUrl, accessToken }: {
     where: { id },
     data: {
       name,
-      google_maps_url: googleMapsUrl,
+      location_url: googleMapsUrl,
     },
   });
 }
