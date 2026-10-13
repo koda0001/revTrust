@@ -11,6 +11,8 @@ type RouteProps = {
 
 function slugify(value: string) {
   return value
+    .replace(/ł/g, "l")
+    .replace(/Ł/g, "L")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()

@@ -181,6 +181,37 @@ export default function SourcesPage() {
     setStatus(null);
   };
 
+const handleToggleActive = async (id: string, newStatus: boolean) => {
+    // 1. Zmiana optymistyczna w UI
+    setLocations((prev) =>
+      prev.map((loc) => (loc.id === id ? { ...loc, is_active: newStatus } : loc)) ??
+      prev.map((loc) => (loc.id === id ? { ...loc, is_active: newStatus } : loc))
+    );
+
+    try {
+      // 2. Wysłanie żądania przez backend API (lub bezpośrednio z autoryzacją)
+      const response = await fetch("/api/locations", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          is_active: newStatus,
+          accessToken,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Nie udało się zaktualizować statusu w bazie");
+      }
+      
+      await fetchLocations();
+    } catch (error) {
+      console.error("Błąd podczas aktualizacji statusu:", error);
+      // Przywrócenie stanu w razie błędu
+      await fetchLocations();
+    }
+  };
+
   const handleSubmitReview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatus(null);
@@ -267,6 +298,7 @@ export default function SourcesPage() {
           showAddLocation={showAddLocation}
           onEdit={handleEditLocation}
           onDelete={handleDeleteLocation}
+          onToggleActive={handleToggleActive}
         />
       </section>
 

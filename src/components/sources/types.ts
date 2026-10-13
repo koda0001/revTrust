@@ -13,6 +13,7 @@ export interface Location {
   source?: string;
   location_url: string;
   created_at: string;
+  is_active: boolean;
 }
 
 export interface LocationFormData {

@@ -123,11 +123,12 @@ export async function createLocation({ name, googleMapsUrl, accessToken }: {
   return location;
 }
 
-export async function updateLocation({ id, name, googleMapsUrl, accessToken }: {
+export async function updateLocation({ id, name, googleMapsUrl, accessToken, is_active }: {
   id: string;
-  name: string;
-  googleMapsUrl: string;
+  name?: string;
+  googleMapsUrl?: string;
   accessToken: string;
+  is_active?: boolean;
 }) {
   const user = await getUserFromAccessToken(accessToken);
   if (!user) throw new Error("Not authenticated");
@@ -141,23 +142,34 @@ export async function updateLocation({ id, name, googleMapsUrl, accessToken }: {
     throw new Error("Lokalizacja nie znaleziona");
   }
 
-  if (!name || !googleMapsUrl) {
-    throw new Error("Nazwa i link Google Maps są wymagane");
+  const data: { name?: string; location_url?: string; is_active?: boolean } = {};
+
+  if (name !== undefined || googleMapsUrl !== undefined) {
+    if (!name?.trim() || !googleMapsUrl?.trim()) {
+      throw new Error("Nazwa i link lokalizacji są wymagane");
+    }
+
+    try {
+      new URL(googleMapsUrl);
+    } catch {
+      throw new Error("Nieprawidłowy URL lokalizacji");
+    }
+
+    data.name = name.trim();
+    data.location_url = googleMapsUrl.trim();
   }
 
-  // Podstawowa walidacja URL
-  try {
-    new URL(googleMapsUrl);
-  } catch {
-    throw new Error("Nieprawidłowy URL Google Maps");
+  if (is_active !== undefined) {
+    data.is_active = is_active;
+  }
+
+  if (Object.keys(data).length === 0) {
+    throw new Error("Brak zmian do zapisania");
   }
 
   return prisma.location.update({
     where: { id },
-    data: {
-      name,
-      location_url: googleMapsUrl,
-    },
+    data,
   });
 }
 
