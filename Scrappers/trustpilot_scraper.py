@@ -9,6 +9,7 @@ import uuid
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 from supabase import Client, create_client
+from typing import Any
 
 # --- CONFIGURATION ---
 DEBUG_MODE = False

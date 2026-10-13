@@ -7,7 +7,7 @@ services:
     env_file:
       - .env
 
-  # 2. Szybki test pojedynczego skryptu (uruchamia bezpośrednio googlescrap.py)
+  # 2. Szybki test pojedynczego skryptu
   scraper-test:
     build: .
     env_file:
@@ -20,5 +20,12 @@ services:
     env_file:
       - .env
     command: python main.py
+    volumes:
+      - .:/workspace  # Przekazuje kod 'na żywo' - zmiana w pliku działa od razu bez rebuildowania!???????
+  small-main-test:
+    build: .
+    env_file:
+      - .env
+    command: python -c "from main import generate_weekly_tasks; generate_weekly_tasks();"
     volumes:
       - .:/workspace  # Przekazuje kod 'na żywo' - zmiana w pliku działa od razu bez rebuildowania!???????
