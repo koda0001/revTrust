@@ -50,7 +50,7 @@ export default function PublicProfile({ profile }: { profile: PublicProfileData 
         </header>
 
         <SourceBreakdown sources={profile.sources} />
-        <ReviewFeed reviews={profile.reviews} />
+        <ReviewFeed reviews={profile.reviews} totalReviewCount={profile.reviewCount} />
         <LeadGenerationBanner />
 
         <footer className="pt-8 text-center text-xs text-slate-500">

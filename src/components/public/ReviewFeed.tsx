@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { PublicReview } from "./types";
 
 function sourceMark(source: string) {
@@ -7,7 +8,7 @@ function sourceMark(source: string) {
   return source.trim().charAt(0).toUpperCase() || "?";
 }
 
-export default function ReviewFeed({ reviews }: { reviews: PublicReview[] }) {
+export default function ReviewFeed({ reviews, totalReviewCount }: { reviews: PublicReview[]; totalReviewCount: number }) {
   return (
     <section aria-labelledby="reviews-heading" className="py-10">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -15,7 +16,7 @@ export default function ReviewFeed({ reviews }: { reviews: PublicReview[] }) {
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-400">Głosy klientów</p>
           <h2 id="reviews-heading" className="mt-2 text-2xl font-semibold text-white">Opinie</h2>
         </div>
-        <p className="text-sm text-slate-400">{reviews.length} najnowszych opinii</p>
+        <p className="text-sm text-slate-400">Wyświetlam {reviews.length} z {totalReviewCount} opinii</p>
       </div>
 
       {reviews.length === 0 ? (
@@ -44,6 +45,18 @@ export default function ReviewFeed({ reviews }: { reviews: PublicReview[] }) {
               <p className="mt-4 max-w-3xl whitespace-pre-wrap text-sm leading-7 text-slate-300">{review.content}</p>
             </article>
           ))}
+        </div>
+      )}
+
+      {totalReviewCount > reviews.length && (
+        <div className="mt-6 rounded-lg border border-indigo-400/20 bg-indigo-400/5 px-5 py-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+          <div>
+            <p className="font-medium text-white">Chcesz poznać wszystkie opinie?</p>
+            <p className="mt-1 text-sm text-slate-400">Zaloguj się, aby uzyskać dostęp do pełnej historii opinii tej lokalizacji.</p>
+          </div>
+          <Link href="/login" className="mt-4 inline-flex shrink-0 items-center justify-center rounded-md bg-indigo-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-indigo-300 sm:mt-0">
+            Zaloguj się
+          </Link>
         </div>
       )}
     </section>

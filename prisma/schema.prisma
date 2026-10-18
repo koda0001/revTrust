@@ -63,6 +63,7 @@ model Location {
   created_at     DateTime?        @default(now()) @db.Timestamptz(6)
   is_active      Boolean?         @default(true)
   source         String?
+  average_rating Decimal?         @db.Decimal
   reviews        Review[]
   scraping_tasks scraping_tasks[]
   weekly_reports weekly_reports[]

@@ -50,6 +50,10 @@ const getPublicProfile = cache(async (slug: string): Promise<PublicProfileData |
     include: {
       reviews: {
         orderBy: { createdAt: "desc" },
+        take: 5,
+      },
+      _count: {
+        select: { reviews: true },
       },
     },
   });
@@ -69,15 +73,19 @@ const getPublicProfile = cache(async (slug: string): Promise<PublicProfileData |
     sourceMap.set(location.source.trim(), { totalRating: 0, reviewCount: 0 });
   }
 
-  const reviewCount = location.reviews.length;
-  const totalRating = location.reviews.reduce((total, review) => total + review.rating, 0);
+  const reviewCount = location._count.reviews;
+  const averageRating = location.average_rating === null
+    ? location.reviews.length
+      ? location.reviews.reduce((total, review) => total + review.rating, 0) / location.reviews.length
+      : 0
+    : Number(location.average_rating);
 
   return {
     id: location.id,
     name: location.name,
     googleMapsUrl: location.location_url,
     locationSource: location.source,
-    averageRating: reviewCount ? totalRating / reviewCount : 0,
+    averageRating,
     reviewCount,
     sources: Array.from(sourceMap, ([name, stats]) => ({
       name,

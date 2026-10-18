@@ -21,11 +21,18 @@ services:
       - .env
     command: python main.py
     volumes:
-      - .:/workspace  # Przekazuje kod 'na żywo' - zmiana w pliku działa od razu bez rebuildowania!???????
+      - .:/workspace
   small-main-test:
     build: .
     env_file:
       - .env
     command: python -c "from main import generate_weekly_tasks; generate_weekly_tasks();"
     volumes:
-      - .:/workspace  # Przekazuje kod 'na żywo' - zmiana w pliku działa od razu bez rebuildowania!???????
+      - .:/workspace  # to tylko dodaje zadania do schedulera
+  scrap_trustpilot-test:
+    build: .
+    env_file:
+      - .env
+    command: python -c "from main import generate_weekly_tasks; generate_weekly_tasks();"
+    volumes:
+      - .:/workspace  # to tylko dodaje zadania do schedulera
